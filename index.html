@@ -1,0 +1,575 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>InvoiceCraft Pro - Universal Free Invoice & Receipt Generator</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #070913;
+            color: #f1f5f9;
+        }
+        .ad-slot-box {
+            background: repeating-linear-gradient(
+                -45deg,
+                rgba(30, 41, 59, 0.45),
+                rgba(30, 41, 59, 0.45) 10px,
+                rgba(15, 23, 42, 0.75) 10px,
+                rgba(15, 23, 42, 0.75) 20px
+            );
+            border: 1px dashed rgba(100, 116, 139, 0.35);
+        }
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        
+        /* Bank-Grade Print / A4 PDF Export Styles */
+        @media print {
+            body { background: white !important; color: #0f172a !important; padding: 0 !important; }
+            header, nav, .ad-slot-box, .no-print, #toastBox { display: none !important; }
+            #printableInvoiceSheet {
+                box-shadow: none !important;
+                border: none !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 20px !important;
+                margin: 0 !important;
+                background: white !important;
+                color: #0f172a !important;
+            }
+            .invoice-table th, .invoice-table td {
+                border-color: #cbd5e1 !important;
+                color: #0f172a !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Top Master Navigation Bar -->
+    <header class="w-full bg-slate-900/95 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 px-4 py-3 flex flex-wrap justify-between items-center gap-3 shadow-2xl">
+        <div class="flex items-center gap-3">
+            <div id="btnLogoHome" class="flex items-center gap-2.5 cursor-pointer">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-indigo-600 flex items-center justify-center text-xl font-black text-white shadow-lg">
+                    🧾
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-base font-black text-white tracking-tight">InvoiceCraft Pro</h1>
+                        <span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">100% Free Forever</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400">Professional Invoices, Receipts & Estimates with Scan-to-Pay QR</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Currency, Sample Fill & Print Actions -->
+        <div class="flex items-center gap-2">
+            <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+                <span class="text-slate-400 px-2 font-semibold">Currency:</span>
+                <select id="selectCurrency" class="bg-slate-800 text-white rounded-lg px-2 py-1 font-bold focus:outline-none cursor-pointer">
+                    <option value="$">USD ($)</option>
+                    <option value="₹" selected>INR (₹)</option>
+                    <option value="€">EUR (€)</option>
+                    <option value="£">GBP (£)</option>
+                    <option value="A$">AUD (A$)</option>
+                    <option value="C$">CAD (C$)</option>
+                </select>
+            </div>
+
+            <button id="btnDemoFill" class="bg-slate-800 hover:bg-slate-700 text-cyan-300 font-bold text-xs px-3 py-2 rounded-xl border border-slate-700 transition flex items-center gap-1.5" title="Fill Sample Business Invoice">
+                <span>🪄 Demo Fill</span>
+            </button>
+
+            <button id="btnPrintInvoice" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 text-slate-950 font-black text-xs px-4 py-2 rounded-xl shadow-lg transition active:scale-95 flex items-center gap-1.5">
+                <span>Download PDF</span> <span>📄</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Top High-CPC B2B AdSense Placement -->
+    <div class="w-full max-w-6xl mx-auto px-4 mt-3 no-print">
+        <div class="ad-slot-box rounded-2xl p-2.5 text-center flex flex-col items-center justify-center min-h-[64px]">
+            <span class="text-[9px] text-slate-500 uppercase tracking-widest font-bold">B2B Accounting & Business Banking AdSense Slot (Leaderboard 728x90)</span>
+            <span class="text-xs text-slate-400 font-medium">Stripe, QuickBooks, Wise Business & Corporate Credit Cards Stream Here ($15 - $35 CPC)</span>
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTAINER -->
+    <main class="w-full max-w-6xl mx-auto px-4 py-4 flex-1 flex flex-col gap-6">
+
+        <!-- 3-in-1 Document Mode & Color Theme Bar -->
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 shadow-2xl flex flex-wrap justify-between items-center gap-4 no-print">
+            
+            <!-- Document Mode Switcher (Invoice vs Receipt vs Quote) -->
+            <div class="flex items-center gap-1.5 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+                <button class="doc-mode-btn px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-md transition" data-mode="invoice">
+                    📄 Tax Invoice
+                </button>
+                <button class="doc-mode-btn px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition" data-mode="receipt">
+                    🧾 Payment Receipt
+                </button>
+                <button class="doc-mode-btn px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition" data-mode="quote">
+                    📑 Quotation / Estimate
+                </button>
+            </div>
+
+            <!-- Accent Theme Color Chooser -->
+            <div class="flex items-center gap-2 text-xs">
+                <span class="text-slate-400 font-semibold text-[11px]">Invoice Theme:</span>
+                <div class="flex gap-1.5">
+                    <button class="theme-color-btn w-6 h-6 rounded-full bg-indigo-600 ring-2 ring-white transition" data-color="indigo" data-hex="#4f46e5" title="Corporate Indigo"></button>
+                    <button class="theme-color-btn w-6 h-6 rounded-full bg-emerald-600 transition" data-color="emerald" data-hex="#059669" title="Modern Emerald"></button>
+                    <button class="theme-color-btn w-6 h-6 rounded-full bg-slate-800 transition" data-color="slate" data-hex="#1e293b" title="Minimal Charcoal"></button>
+                    <button class="theme-color-btn w-6 h-6 rounded-full bg-rose-600 transition" data-color="rose" data-hex="#e11d48" title="Bold Ruby"></button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Master Sheet: Clean Bank-Ready A4 Document Sheet -->
+        <div class="w-full flex justify-center">
+            
+            <div id="printableInvoiceSheet" class="w-full max-w-4xl bg-white text-slate-900 rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-200 flex flex-col gap-6 text-left transition-all">
+                
+                <!-- Invoice Header Bar: Company Info & Logo -->
+                <div class="flex flex-wrap justify-between items-start gap-6 border-b-2 border-indigo-600 pb-6" id="themeHeaderBorder">
+                    
+                    <!-- Company Logo & Editable Info -->
+                    <div class="flex flex-col gap-2 max-w-md">
+                        <div class="flex items-center gap-3">
+                            <label for="inputLogoUpload" class="cursor-pointer group relative no-print">
+                                <div id="logoPreviewBox" class="w-16 h-16 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 group-hover:border-indigo-500 flex items-center justify-center text-2xl overflow-hidden transition shadow-sm">
+                                    🏢
+                                </div>
+                                <span class="text-[9px] text-slate-500 block text-center mt-0.5 group-hover:text-indigo-600 font-semibold">Change Logo</span>
+                                <input id="inputLogoUpload" type="file" accept="image/*" class="hidden">
+                            </label>
+                            <div>
+                                <input id="companyName" type="text" value="Acme Studio & Labs" placeholder="Your Business / Freelancer Name" class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight w-full focus:outline-none focus:bg-slate-50 rounded px-1">
+                                <input id="companyTagline" type="text" value="Design, Development & Consulting" placeholder="Tagline or Registration Number" class="text-xs text-slate-500 font-medium w-full focus:outline-none focus:bg-slate-50 rounded px-1">
+                            </div>
+                        </div>
+
+                        <textarea id="companyAddress" rows="2" placeholder="Your Business Address, Email & Phone" class="text-xs text-slate-600 w-full focus:outline-none focus:bg-slate-50 rounded p-1 resize-none leading-relaxed">124 Business Avenue, Floor 4, Bangalore, India&#10;Email: billing@acmestudio.com • Phone: +91 98765 43210</textarea>
+                    </div>
+
+                    <!-- Invoice Title & Document Meta Details -->
+                    <div class="flex flex-col items-end text-right gap-1 min-w-[200px]">
+                        <div class="flex items-center gap-2">
+                            <h2 id="docHeadingText" class="text-2xl sm:text-3xl font-black text-indigo-600 uppercase tracking-tight" id="themeTitleColor">TAX INVOICE</h2>
+                            <span id="badgePaidReceipt" class="hidden text-xs bg-emerald-100 text-emerald-800 border-2 border-emerald-500 px-2 py-0.5 rounded-lg font-black uppercase tracking-wider">PAID ✓</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-xs mt-2 text-right">
+                            <span class="text-slate-500 font-semibold">Document #:</span>
+                            <input id="docNumber" type="text" value="INV-2026-084" class="font-bold text-slate-900 text-right focus:outline-none focus:bg-slate-50 rounded px-1">
+                            
+                            <span class="text-slate-500 font-semibold">Issue Date:</span>
+                            <input id="docDate" type="date" class="text-slate-900 text-right focus:outline-none focus:bg-slate-50 rounded px-1">
+                            
+                            <span id="labelDueDate" class="text-slate-500 font-semibold">Due Date:</span>
+                            <input id="docDueDate" type="date" class="text-slate-900 text-right focus:outline-none focus:bg-slate-50 rounded px-1">
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Bill To Client Section -->
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-wrap justify-between items-start gap-4">
+                    <div class="flex flex-col gap-1 flex-1 min-w-[240px]">
+                        <span class="text-[10px] font-black text-indigo-600 uppercase tracking-wider">Billed To (Client Details):</span>
+                        <input id="clientName" type="text" value="Nexus Global Tech Ltd." placeholder="Client Company / Individual Name" class="font-bold text-sm text-slate-900 focus:outline-none focus:bg-white rounded px-1">
+                        <textarea id="clientAddress" rows="2" placeholder="Client Address, Tax ID / GSTIN & Email" class="text-xs text-slate-600 focus:outline-none focus:bg-white rounded p-1 resize-none leading-relaxed">Suite 700, Innovation Tower, San Francisco, CA&#10;Tax / VAT ID: US-987654321 • contact@nexusglobal.com</textarea>
+                    </div>
+
+                    <div class="flex flex-col text-right text-xs gap-1">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Payment Terms</span>
+                        <span class="font-bold text-slate-800">Net 15 Days (Due on Receipt)</span>
+                        <span class="text-[11px] text-emerald-600 font-semibold">Status: Unpaid</span>
+                    </div>
+                </div>
+
+                <!-- Line Items Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs invoice-table">
+                        <thead class="bg-indigo-50 text-indigo-950 font-bold border-b border-indigo-200" id="themeTableHeader">
+                            <tr>
+                                <th class="p-3 w-7/12">Item Description</th>
+                                <th class="p-3 text-center w-2/12">Qty / Hrs</th>
+                                <th class="p-3 text-right w-2/12">Unit Rate</th>
+                                <th class="p-3 text-right w-2/12">Amount</th>
+                                <th class="p-3 text-center w-1/12 no-print">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lineItemsBody" class="divide-y divide-slate-200 font-medium">
+                            <!-- Dynamic Rows -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Add Row Button -->
+                <div class="flex justify-start no-print">
+                    <button id="btnAddItemRow" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3.5 py-1.5 rounded-xl border border-slate-300 transition flex items-center gap-1 active:scale-95">
+                        <span>+ Add Line Item</span>
+                    </button>
+                </div>
+
+                <!-- Calculation Summary & Embedded Payment QR Section -->
+                <div class="flex flex-wrap justify-between items-start gap-6 pt-4 border-t border-slate-200">
+                    
+                    <!-- Left: Embedded Scan-to-Pay QR Code & Bank Info -->
+                    <div class="flex flex-col gap-2 max-w-sm">
+                        <span class="text-[10px] font-black text-indigo-600 uppercase tracking-wider">Payment Details & Instant Pay QR:</span>
+                        
+                        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex items-center gap-3">
+                            <!-- The Live Generated Payment QR -->
+                            <div id="invoiceQrBox" class="p-1 bg-white rounded-xl border border-slate-300 flex-shrink-0 min-w-[80px] min-h-[80px] flex items-center justify-center"></div>
+
+                            <div class="flex flex-col text-[11px] text-slate-600 leading-normal">
+                                <span class="font-bold text-slate-900">Scan to Pay via UPI / PayPal</span>
+                                <span>UPI / VPA: <strong id="readoutUpiId" class="text-indigo-600">merchant@okaxis</strong></span>
+                                <span>Bank: HDFC Bank • IFSC: HDFC0001234</span>
+                                <span class="text-[10px] text-slate-500">A/C: 50200012345678</span>
+                            </div>
+                        </div>
+
+                        <!-- Payment QR Input (No-Print) -->
+                        <div class="flex items-center gap-2 no-print mt-1">
+                            <input id="inputPaymentLink" type="text" value="merchant@okaxis" placeholder="Enter UPI ID or PayPal link to update QR" class="text-[11px] bg-slate-100 border border-slate-300 rounded-lg p-1.5 flex-1 focus:outline-none">
+                            <button id="btnRefreshQr" class="bg-slate-800 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg">Update QR</button>
+                        </div>
+                    </div>
+
+                    <!-- Right: Subtotal, Tax, Discount & Grand Total -->
+                    <div class="flex flex-col gap-2 min-w-[260px] text-xs">
+                        <div class="flex justify-between items-center text-slate-600">
+                            <span>Subtotal:</span>
+                            <span id="outSubtotal" class="font-bold text-slate-900">₹0.00</span>
+                        </div>
+
+                        <!-- Tax Control -->
+                        <div class="flex justify-between items-center gap-2">
+                            <div class="flex items-center gap-1">
+                                <span class="text-slate-600">Tax / GST:</span>
+                                <input id="inputTaxRate" type="number" value="18" min="0" max="100" class="w-12 text-center bg-slate-100 border border-slate-300 rounded p-0.5 text-xs font-bold focus:outline-none">
+                                <span class="text-slate-500">%</span>
+                            </div>
+                            <span id="outTaxAmount" class="font-bold text-slate-900">₹0.00</span>
+                        </div>
+
+                        <!-- Discount Control -->
+                        <div class="flex justify-between items-center gap-2">
+                            <div class="flex items-center gap-1">
+                                <span class="text-slate-600">Discount:</span>
+                                <input id="inputDiscountRate" type="number" value="0" min="0" max="100" class="w-12 text-center bg-slate-100 border border-slate-300 rounded p-0.5 text-xs font-bold focus:outline-none">
+                                <span class="text-slate-500">%</span>
+                            </div>
+                            <span id="outDiscountAmount" class="font-bold text-rose-600">-₹0.00</span>
+                        </div>
+
+                        <!-- Grand Total Highlight -->
+                        <div class="flex justify-between items-center pt-2 border-t-2 border-slate-900 text-sm font-black text-slate-950">
+                            <span>Total Due:</span>
+                            <span id="outGrandTotal" class="text-lg font-black text-indigo-600">₹0.00</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Terms & Signatory Footer -->
+                <div class="flex flex-wrap justify-between items-end gap-4 pt-6 border-t border-slate-200 text-xs text-slate-500">
+                    <div class="flex flex-col gap-1 max-w-sm">
+                        <span class="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Terms & Conditions</span>
+                        <p class="text-[11px] leading-relaxed">
+                            Payment is requested within 15 days of invoice date. Late payments are subject to a 1.5% fee per month. Thank you for your continued partnership!
+                        </p>
+                    </div>
+
+                    <div class="flex flex-col items-center text-center gap-1">
+                        <div class="w-36 h-10 border-b border-slate-400 flex items-end justify-center pb-1">
+                            <span class="font-serif italic text-slate-700 text-xs">Alex Morgan</span>
+                        </div>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Authorized Signature</span>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Sponsored Fintech Partner Banner -->
+        <div class="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-500/30 rounded-2xl p-4 flex flex-wrap justify-between items-center gap-3 shadow-xl no-print">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">💳</span>
+                <div>
+                    <h4 class="text-xs sm:text-sm font-black text-white">Accept International Card Payments with Zero Setup Fees</h4>
+                    <p class="text-[11px] text-slate-400">Get paid in USD, EUR, GBP directly to your bank account with Stripe & Wise Business.</p>
+                </div>
+            </div>
+            <button id="btnFintechBonus" class="bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl shadow-lg transition active:scale-95">
+                Get $500 Free Processing ⚡
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Notification Toast -->
+    <div id="toastBox" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-500 text-slate-950 font-black px-4 py-2 rounded-full text-xs shadow-2xl z-50 transition-all flex items-center gap-1.5">
+        <span>✨</span> <span id="toastMsg">Action completed!</span>
+    </div>
+
+    <script>
+        function notify(msg) {
+            const t = document.getElementById('toastBox');
+            document.getElementById('toastMsg').innerText = msg;
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 2300);
+        }
+
+        let currency = '₹';
+        let currentMode = 'invoice';
+        let themeColorHex = '#4f46e5';
+
+        // Line Items State
+        let items = [
+            { desc: 'Full-Stack Web Application Development (Milestone 1)', qty: 1, rate: 45000 },
+            { desc: 'UI/UX Interactive Prototyping & Design System', qty: 1, rate: 15000 },
+            { desc: 'API Integration & Cloud Performance Optimization', qty: 10, rate: 1200 }
+        ];
+
+        // Format Money
+        function fmt(num) {
+            return Math.round(num).toLocaleString('en-IN');
+        }
+
+        // --- Render Line Items Table ---
+        const lineItemsBody = document.getElementById('lineItemsBody');
+
+        function renderLineItems() {
+            lineItemsBody.innerHTML = '';
+            items.forEach((item, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="p-2.5">
+                        <input type="text" value="${item.desc}" class="item-desc w-full bg-transparent text-slate-800 text-xs font-medium focus:outline-none focus:bg-white rounded p-1" placeholder="Item description...">
+                    </td>
+                    <td class="p-2.5 text-center">
+                        <input type="number" min="1" value="${item.qty}" class="item-qty w-16 text-center bg-slate-100 border border-slate-200 rounded p-1 text-xs font-bold focus:outline-none">
+                    </td>
+                    <td class="p-2.5 text-right font-mono">
+                        <input type="number" min="0" value="${item.rate}" class="item-rate w-24 text-right bg-slate-100 border border-slate-200 rounded p-1 text-xs font-bold focus:outline-none">
+                    </td>
+                    <td class="p-2.5 text-right font-mono font-bold text-slate-900">
+                        ${currency}${fmt(item.qty * item.rate)}
+                    </td>
+                    <td class="p-2.5 text-center no-print">
+                        <button class="btn-del-row text-rose-500 hover:text-rose-700 font-bold text-xs p-1">✕</button>
+                    </td>
+                `;
+
+                // Listeners
+                tr.querySelector('.item-desc').addEventListener('input', (e) => {
+                    item.desc = e.target.value;
+                });
+                tr.querySelector('.item-qty').addEventListener('input', (e) => {
+                    item.qty = parseFloat(e.target.value) || 0;
+                    calculateTotals();
+                });
+                tr.querySelector('.item-rate').addEventListener('input', (e) => {
+                    item.rate = parseFloat(e.target.value) || 0;
+                    calculateTotals();
+                });
+                tr.querySelector('.btn-del-row').addEventListener('click', () => {
+                    if (items.length > 1) {
+                        items.splice(idx, 1);
+                        renderLineItems();
+                        calculateTotals();
+                    } else {
+                        notify('At least 1 item row required!');
+                    }
+                });
+
+                lineItemsBody.appendChild(tr);
+            });
+        }
+
+        document.getElementById('btnAddItemRow').addEventListener('click', () => {
+            items.push({ desc: 'New Service / Deliverable', qty: 1, rate: 5000 });
+            renderLineItems();
+            calculateTotals();
+        });
+
+        // --- Calculate Subtotal, Tax & Total ---
+        function calculateTotals() {
+            let subtotal = 0;
+            items.forEach(it => {
+                subtotal += (it.qty * it.rate);
+            });
+
+            const taxRate = parseFloat(document.getElementById('inputTaxRate').value) || 0;
+            const discountRate = parseFloat(document.getElementById('inputDiscountRate').value) || 0;
+
+            const taxAmount = subtotal * (taxRate / 100);
+            const discountAmount = subtotal * (discountRate / 100);
+            const grandTotal = subtotal + taxAmount - discountAmount;
+
+            document.getElementById('outSubtotal').innerText = `${currency}${fmt(subtotal)}`;
+            document.getElementById('outTaxAmount').innerText = `${currency}${fmt(taxAmount)}`;
+            document.getElementById('outDiscountAmount').innerText = `-${currency}${fmt(discountAmount)}`;
+            document.getElementById('outGrandTotal').innerText = `${currency}${fmt(grandTotal)}`;
+
+            // Refresh table amounts
+            renderLineItems();
+        }
+
+        document.getElementById('inputTaxRate').addEventListener('input', calculateTotals);
+        document.getElementById('inputDiscountRate').addEventListener('input', calculateTotals);
+
+        // --- Currency Switcher ---
+        const selectCurrency = document.getElementById('selectCurrency');
+        selectCurrency.addEventListener('change', () => {
+            currency = selectCurrency.value;
+            calculateTotals();
+            notify(`Currency switched to ${currency}`);
+        });
+
+        // --- 3-in-1 Document Mode Switcher ---
+        const docModeBtns = document.querySelectorAll('.doc-mode-btn');
+        const docHeadingText = document.getElementById('docHeadingText');
+        const badgePaidReceipt = document.getElementById('badgePaidReceipt');
+        const labelDueDate = document.getElementById('labelDueDate');
+
+        docModeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                docModeBtns.forEach(b => {
+                    b.className = 'doc-mode-btn px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition';
+                });
+                btn.className = 'doc-mode-btn px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-md transition';
+
+                currentMode = btn.dataset.mode;
+                if (currentMode === 'invoice') {
+                    docHeadingText.innerText = 'TAX INVOICE';
+                    badgePaidReceipt.classList.add('hidden');
+                    labelDueDate.innerText = 'Due Date:';
+                } else if (currentMode === 'receipt') {
+                    docHeadingText.innerText = 'PAYMENT RECEIPT';
+                    badgePaidReceipt.classList.remove('hidden');
+                    labelDueDate.innerText = 'Payment Date:';
+                } else if (currentMode === 'quote') {
+                    docHeadingText.innerText = 'PRICE QUOTATION';
+                    badgePaidReceipt.classList.add('hidden');
+                    labelDueDate.innerText = 'Valid Until:';
+                }
+                notify(`Switched to ${btn.innerText.trim()}!`);
+            });
+        });
+
+        // --- Theme Color Customizer ---
+        const themeColorBtns = document.querySelectorAll('.theme-color-btn');
+        themeColorBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                themeColorBtns.forEach(b => b.classList.remove('ring-2', 'ring-white'));
+                btn.classList.add('ring-2', 'ring-white');
+
+                themeColorHex = btn.dataset.hex;
+                document.getElementById('themeHeaderBorder').style.borderColor = themeColorHex;
+                docHeadingText.style.color = themeColorHex;
+                document.getElementById('outGrandTotal').style.color = themeColorHex;
+                notify(`Theme color applied! 🎨`);
+            });
+        });
+
+        // --- Embedded Scan-to-Pay QR Code Engine ---
+        const invoiceQrBox = document.getElementById('invoiceQrBox');
+        const inputPaymentLink = document.getElementById('inputPaymentLink');
+        const readoutUpiId = document.getElementById('readoutUpiId');
+
+        function generatePaymentQr() {
+            const payVal = inputPaymentLink.value.trim() || 'merchant@okaxis';
+            readoutUpiId.innerText = payVal;
+            invoiceQrBox.innerHTML = '';
+
+            let qrPayload = payVal;
+            if (payVal.includes('@')) {
+                // Form UPI URI
+                qrPayload = `upi://pay?pa=${payVal}&pn=Merchant&cu=INR`;
+            }
+
+            new QRCode(invoiceQrBox, {
+                text: qrPayload,
+                width: 76,
+                height: 76,
+                colorDark: '#0f172a',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+        document.getElementById('btnRefreshQr').addEventListener('click', () => {
+            generatePaymentQr();
+            notify('Payment QR updated! 💳');
+        });
+
+        // --- Company Logo Upload ---
+        const inputLogoUpload = document.getElementById('inputLogoUpload');
+        const logoPreviewBox = document.getElementById('logoPreviewBox');
+
+        inputLogoUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const r = new FileReader();
+            r.onload = (evt) => {
+                logoPreviewBox.innerHTML = `<img src="${evt.target.result}" class="w-full h-full object-contain p-1">`;
+                notify('Company logo uploaded! 🏢');
+            };
+            r.readAsDataURL(file);
+        });
+
+        // --- Demo Sample Filler ---
+        document.getElementById('btnDemoFill').addEventListener('click', () => {
+            document.getElementById('companyName').value = 'Royal Bengal Digital Studio';
+            document.getElementById('companyTagline').value = 'Cloud Architecture & Web Development';
+            document.getElementById('clientName').value = 'Global Retail Group Inc.';
+            document.getElementById('clientAddress').value = '450 Lexington Ave, New York, NY 10017\nVAT ID: US-48291048';
+            items = [
+                { desc: 'Custom E-Commerce Platform Architecture & Next.js Build', qty: 1, rate: 85000 },
+                { desc: 'Payment Gateway Integration & Webhook Security', qty: 1, rate: 25000 },
+                { desc: 'Cloud CDN Setup & Load Testing (Hours)', qty: 8, rate: 2500 }
+            ];
+            document.getElementById('inputTaxRate').value = 18;
+            document.getElementById('inputDiscountRate').value = 5;
+            calculateTotals();
+            notify('Sample business invoice loaded! 🪄');
+        });
+
+        // --- 1-Click Bank-Ready PDF Export & Print ---
+        document.getElementById('btnPrintInvoice').addEventListener('click', () => {
+            notify('📄 Opening Print & PDF Export Dialog...');
+            setTimeout(() => window.print(), 350);
+        });
+
+        document.getElementById('btnFintechBonus').addEventListener('click', () => {
+            notify('🎉 Partner payment gateway activated ($500 processing credit)!');
+        });
+
+        // Default Dates Setup
+        const today = new Date();
+        const due = new Date();
+        due.setDate(today.getDate() + 15);
+        document.getElementById('docDate').value = today.toISOString().split('T')[0];
+        document.getElementById('docDueDate').value = due.toISOString().split('T')[0];
+
+        // Initial Load
+        window.onload = () => {
+            renderLineItems();
+            calculateTotals();
+            generatePaymentQr();
+        };
+    </script>
+</body>
+</html>
+```
